@@ -1,386 +1,201 @@
-'use strict';
+import { Grid } from './grid';
+import { Tile } from './tile';
 
-const button = document.querySelector('.button');
-const fieldCells = document.querySelectorAll('.field_cell');
-const gameScore = document.querySelector('.game_score');
-const messageLose = document.querySelector('.message_lose');
-const messageWin = document.querySelector('.message_win');
-const messageStart = document.querySelector('.message_start');
-let board = [];
-let playGame = true;
+const gameField = document.getElementById('game-field');
+
+const grid = new Grid(gameField);
+
 let score = 0;
-let mergedCells = [];
-const numFour = 4;
-const tenPercent = 0.1;
-const numTwo = 2;
+const button = document.querySelector('.button');
+const scoreElement = document.querySelector('.game-score');
 
-function getRandomNumber() {
-  return Math.random() > tenPercent ? numTwo : numFour;
+button.addEventListener('click', startGame);
+
+function startGame() {
+  setupNewGame();
+
+  document.querySelector('.message-start').classList.add('hidden');
+  button.classList.remove('start');
+  button.innerHTML = 'Restart';
+  button.classList.add('restart');
+
+  button.removeEventListener('click', startGame);
+  button.addEventListener('click', setupNewGame);
 }
 
-function generateRandomNumbers() {
-  const availableCells = [];
-
-  for (let i = 0; i < numFour; i++) {
-    for (let j = 0; j < numFour; j++) {
-      if (board[i][j] === 0) {
-        availableCells.push({
-          row: i, col: j,
-        });
-      }
+function setupNewGame() {
+  grid.cells.forEach(cell => {
+    if (!cell.isEmpty()) {
+      cell.linkedTile.removeFromDom();
+      cell.unlinkTile();
     }
-  }
+  });
 
-  if (availableCells.length > 0) {
-    const randomCell
-      = availableCells[Math.floor(Math.random() * availableCells.length)];
+  grid.getRandomEmptyCell().linkTile(new Tile(gameField));
+  grid.getRandomEmptyCell().linkTile(new Tile(gameField));
 
-    board[randomCell.row][randomCell.col] = getRandomNumber();
-  }
+  setupInputOnce();
+
+  score = 0;
+  scoreElement.innerHTML = score;
+
+  document.querySelector('.message-lose').classList.add('hidden');
+  document.querySelector('.message-win').classList.add('hidden');
 }
 
-function createField() {
-  board = Array.from({ length: numFour }, () => Array(numFour).fill(0));
+const ARROW_UP = 'ArrowUp';
+const ARROW_DOWN = 'ArrowDown';
+const ARROW_LEFT = 'ArrowLeft';
+const ARROW_RIGHT = 'ArrowRight';
 
-  mergedCells = Array.from({ length: numFour },
-    () => Array(numFour).fill(false));
-}
+function handleInput(e) {
+  switch (e.key) {
+    case ARROW_UP:
+      if (!canMoveUp()) {
+        setupInputOnce();
 
-function inRange(row, col) {
-  return row >= 0 && row < numFour && col >= 0 && col < numFour;
-}
-
-function mergeAndMove(row, col, rowChange, colChange) {
-  if (board[row][col] !== 0) {
-    let nextRow = row + rowChange;
-    let nextCol = col + colChange;
-
-    while (inRange(nextRow, nextCol) && board[nextRow][nextCol] === 0) {
-      nextRow += rowChange;
-      nextCol += colChange;
-    }
-
-    if (inRange(nextRow, nextCol) && board[nextRow][nextCol]
-      === board[row][col] && !mergedCells[nextRow][nextCol]) {
-      board[nextRow][nextCol] *= 2;
-      mergedCells[nextRow][nextCol] = true;
-
-      if (board[nextRow][nextCol] === 2048) {
-        messageWin.classList.remove('hidden');
-        playGame = false;
+        return;
       }
-      score += board[nextRow][nextCol];
-      board[row][col] = 0;
+      moveUp();
+      break;
 
-      const cellMerged = fieldCells[nextRow * numFour + nextCol];
+    case ARROW_DOWN:
+      if (!canMoveDown()) {
+        setupInputOnce();
 
-      cellMerged.classList.add('field_cell--merge');
-
-      cellMerged.addEventListener('animationend', () => {
-        cellMerged.classList.remove('field_cell--merge');
-        updateBoard();
-      });
-    } else {
-      nextRow -= rowChange;
-      nextCol -= colChange;
-      board[nextRow][nextCol] = board[row][col];
-
-      if (nextRow !== row || nextCol !== col) {
-        board[row][col] = 0;
-
-        const cellMoved = fieldCells[row * numFour + col];
-
-        cellMoved.classList.add('field_cell--defaultMove');
-
-        if (colChange === 1) {
-          cellMoved.classList.add('field_cell--moveRight');
-
-          setTimeout(() => {
-            cellMoved.classList.remove('field_cell--moveRight');
-            updateBoard();
-          }, 200);
-        }
-
-        if (colChange === -1) {
-          cellMoved.classList.add('field_cell--moveLeft');
-
-          setTimeout(() => {
-            cellMoved.classList.remove('field_cell--moveLeft');
-            updateBoard();
-          }, 200);
-        }
-
-        if (rowChange === 1) {
-          cellMoved.classList.add('field_cell--moveDown');
-
-          setTimeout(() => {
-            cellMoved.classList.remove('field_cell--moveDown');
-            updateBoard();
-          }, 200);
-        }
-
-        if (rowChange === -1) {
-          cellMoved.classList.add('field_cell--moveUp');
-
-          setTimeout(() => {
-            cellMoved.classList.remove('field_cell--moveUp');
-            updateBoard();
-          }, 200);
-        }
+        return;
       }
-    }
-  }
-}
+      moveDown();
+      break;
 
-function moveRight() {
-  let canMove = false;
+    case ARROW_LEFT:
+      if (!canMoveLeft()) {
+        setupInputOnce();
 
-  for (let row = 0; row < numFour; row++) {
-    for (let col = numFour - 2; col >= 0; col--) {
-      if (board[row][col] !== 0) {
-        for (let k = col + 1; k < numFour; k++) {
-          if (board[row][k] === 0) {
-            canMove = true;
-            mergeAndMove(row, col, 0, 1);
-            break;
-          } else if (board[row][k] === board[row][col]) {
-            canMove = true;
-            mergeAndMove(row, col, 0, 1);
-            break;
-          } else {
-            break;
-          }
-        }
+        return;
       }
-    }
-  }
+      moveLeft();
+      break;
 
-  if (canMove) {
-    setTimeout(() => {
-      updateBoard();
-      generateRandomNumbers();
-      updateBoard();
-      youLose();
-    }, 200);
-  }
-}
+    case ARROW_RIGHT:
+      if (!canMoveRight()) {
+        setupInputOnce();
 
-function moveLeft() {
-  let canMove = false;
-
-  for (let row = 0; row < numFour; row++) {
-    for (let col = 1; col < numFour; col++) {
-      if (board[row][col] !== 0) {
-        for (let k = col - 1; k >= 0; k--) {
-          if (board[row][k] === 0) {
-            canMove = true;
-            mergeAndMove(row, col, 0, -1);
-            break;
-          } else if (board[row][k] === board[row][col]) {
-            canMove = true;
-            mergeAndMove(row, col, 0, -1);
-            break;
-          } else {
-            break;
-          }
-        }
+        return;
       }
-    }
+      moveRight();
+      break;
+
+    default:
+      setupInputOnce();
+
+      return;
   }
 
-  if (canMove) {
-    setTimeout(() => {
-      updateBoard();
-      generateRandomNumbers();
-      updateBoard();
-      youLose();
-    }, 200);
-  }
-}
+  const newTile = new Tile(gameField);
 
-function moveDown() {
-  let canMove = false;
+  grid.getRandomEmptyCell().linkTile(newTile);
 
-  for (let col = 0; col < numFour; col++) {
-    for (let row = numFour - 2; row >= 0; row--) {
-      if (board[row][col] !== 0) {
-        for (let k = row + 1; k < numFour; k++) {
-          if (board[k][col] === 0) {
-            canMove = true;
-            mergeAndMove(row, col, 1, 0);
-            break;
-          } else if (board[k][col] === board[row][col]) {
-            canMove = true;
-            mergeAndMove(row, col, 1, 0);
-            break;
-          } else {
-            break;
-          }
-        }
-      }
-    }
+  if (!canMoveUp() && !canMoveDown() && !canMoveLeft() && !canMoveRight()) {
+    document.querySelector('.message-lose').classList.remove('hidden');
   }
 
-  if (canMove) {
-    setTimeout(() => {
-      updateBoard();
-      generateRandomNumbers();
-      updateBoard();
-      youLose();
-    }, 200);
-  }
+  setupInputOnce();
 }
 
 function moveUp() {
-  let canMove = false;
+  slideTiles(grid.cellsGroupedByColumn);
+}
 
-  for (let col = 0; col < numFour; col++) {
-    for (let row = 1; row < numFour; row++) {
-      if (board[row][col] !== 0) {
-        for (let k = row - 1; k >= 0; k--) {
-          if (board[k][col] === 0) {
-            canMove = true;
-            mergeAndMove(row, col, -1, 0);
-            break;
-          } else if (board[k][col] === board[row][col]) {
-            canMove = true;
-            mergeAndMove(row, col, -1, 0);
-            break;
-          } else {
-            break;
-          }
-        }
-      }
+function moveDown() {
+  slideTiles(grid.cellsGroupedByReversedColumn);
+}
+
+function moveLeft() {
+  slideTiles(grid.cellsGroupedByRow);
+}
+
+function moveRight() {
+  slideTiles(grid.cellsGroupedByReversedRow);
+}
+
+function slideTilesInGroup(group) {
+  for (let i = 0; i < group.length; i++) {
+    if (group[i].isEmpty()) {
+      continue;
     }
-  }
 
-  if (canMove) {
-    setTimeout(() => {
-      updateBoard();
-      generateRandomNumbers();
-      updateBoard();
-      youLose();
-    }, 200);
+    const cellWithTail = group[i];
+
+    let targetCell;
+    let j = i - 1;
+
+    while (j >= 0 && group[j].canAccept(cellWithTail.linkedTile)) {
+      targetCell = group[j];
+      j--;
+    }
+
+    if (!targetCell) {
+      continue;
+    }
+
+    targetCell.isEmpty()
+      ? targetCell.linkTile(cellWithTail.linkedTile)
+      : targetCell.linkTileForMerge(cellWithTail.linkedTile);
+
+    cellWithTail.unlinkTile();
   }
 }
 
-function resetMergedCells() {
-  mergedCells = Array.from({ length: numFour },
-    () => Array(numFour).fill(false));
+function slideTiles(groupedCells) {
+  groupedCells.forEach(group => slideTilesInGroup(group));
+
+  grid.cells.forEach(cell => {
+    if (cell.hasTileForMerge()) {
+      cell.mergeTiles();
+      score += cell.getValue();
+      scoreElement.innerHTML = score;
+    }
+
+    if (cell.getValue() === 2048) {
+      document.querySelector('.message-win').classList.remove('hidden');
+      window.removeEventListener('keydown');
+    }
+  });
 }
 
-function updateCell(row, col) {
-  const cell = fieldCells[row * numFour + col];
-  const value = board[row][col];
+function setupInputOnce() {
+  window.addEventListener('keydown', handleInput, { once: true });
+};
 
-  gameScore.textContent = score;
-
-  cell.textContent = value || '';
-
-  cell.className = 'field_cell';
-
-  if (value !== 0) {
-    cell.classList.add(`field_cell--${value}`);
-  }
+function canMoveUp() {
+  return canMove(grid.cellsGroupedByColumn);
 }
 
-function updateBoard() {
-  for (let row = 0; row < numFour; row++) {
-    for (let col = 0; col < numFour; col++) {
-      updateCell(row, col);
-    }
-  }
+function canMoveDown() {
+  return canMove(grid.cellsGroupedByReversedColumn);
 }
 
-button.addEventListener('click', () => {
-  playGame = true;
-  messageStart.classList.add('hidden');
+function canMoveLeft() {
+  return canMove(grid.cellsGroupedByRow);
+}
 
-  if (button.classList.contains('restart')) {
-    score = 0;
-    messageLose.classList.add('hidden');
-    messageWin.classList.add('hidden');
-    createField();
-    generateRandomNumbers();
-    generateRandomNumbers();
-    updateBoard();
-  } else {
-    button.classList.remove('start');
-    button.classList.add('restart');
-    button.textContent = 'Restart';
-    playGame = true;
-    createField();
-    generateRandomNumbers();
-    generateRandomNumbers();
-  }
+function canMoveRight() {
+  return canMove(grid.cellsGroupedByReversedRow);
+}
 
-  for (let row = 0; row < numFour; row++) {
-    for (let col = 0; col < numFour; col++) {
-      updateCell(row, col);
-    }
-  }
-});
+function canMove(groupedCells) {
+  return groupedCells.some(group => canMoveInGroup(group));
+}
 
-document.addEventListener('keydown', events => {
-  if (playGame) {
-    const pressedKey = events.key;
-
-    switch (pressedKey) {
-      case 'ArrowRight':
-        moveRight();
-        resetMergedCells();
-        youLose();
-        break;
-      case 'ArrowLeft':
-        moveLeft();
-        resetMergedCells();
-        youLose();
-        break;
-      case 'ArrowUp':
-        moveUp();
-        resetMergedCells();
-        youLose();
-        break;
-      case 'ArrowDown':
-        moveDown();
-        resetMergedCells();
-        youLose();
-        break;
-    };
-  }
-});
-
-function youLose() {
-  let canMove = false;
-
-  for (let row = 0; row < numFour; row++) {
-    for (let col = 0; col < numFour; col++) {
-      if (board[row][col] === 0) {
-        canMove = true;
-        break;
-      }
+function canMoveInGroup(group) {
+  return group.some((cell, index) => {
+    if (index === 0 || cell.isEmpty()) {
+      return false;
     }
 
-    if (canMove) {
-      break;
-    }
-  }
+    const targetCell = group[index - 1];
 
-  if (!canMove) {
-    for (let row = 0; row < numFour; row++) {
-      for (let col = 0; col < numFour; col++) {
-        const current = board[row][col];
-
-        if (
-          (row > 0 && board[row - 1][col] === current)
-          || (row < numFour - 1 && board[row + 1][col] === current)
-          || (col > 0 && board[row][col - 1] === current)
-          || (col < numFour - 1 && board[row][col + 1] === current)
-        ) {
-          return;
-        }
-      }
-    }
-    messageLose.classList.remove('hidden');
-  }
+    return targetCell.canAccept(cell.linkedTile);
+  });
 }
