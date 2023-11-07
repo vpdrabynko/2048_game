@@ -43,6 +43,75 @@ function setupNewGame() {
   document.querySelector('.message-win').classList.add('hidden');
 }
 
+let touchstartX;
+let touchstartY;
+let touchendX;
+let touchendY;
+
+gameField.addEventListener('touchstart', function (event) {
+  touchstartX = event.changedTouches[0].screenX;
+  touchstartY = event.changedTouches[0].screenY;
+}, false);
+
+gameField.addEventListener('touchend', function (event) {
+  touchendX = event.changedTouches[0].screenX;
+  touchendY = event.changedTouches[0].screenY;
+  handleGesture();
+}, false);
+
+
+function handleGesture() {
+  if (touchendX < touchstartX) {
+    if (!canMoveLeft()) {
+      setupInputOnce();
+
+      return;
+    }
+    moveLeft();
+  }
+
+  if (touchendX > touchstartX) {
+    if (!canMoveRight()) {
+      setupInputOnce();
+
+      return;
+    }
+    moveRight();
+  }
+
+  if (touchendY < touchstartY) {
+    if (!canMoveUp()) {
+      setupInputOnce();
+
+      return;
+    }
+    moveUp();
+  }
+
+  if (touchendY > touchstartY) {
+    if (!canMoveDown()) {
+      setupInputOnce();
+
+      return;
+    }
+    moveDown();
+  }
+
+  if (touchendY === touchstartY) {
+    setupInputOnce();
+  }
+
+  const newTile = new Tile(gameField);
+
+  grid.getRandomEmptyCell().linkTile(newTile);
+
+  if (!canMoveUp() && !canMoveDown() && !canMoveLeft() && !canMoveRight()) {
+    document.querySelector('.message-lose').classList.remove('hidden');
+  }
+
+  setupInputOnce();
+}
+
 const ARROW_UP = 'ArrowUp';
 const ARROW_DOWN = 'ArrowDown';
 const ARROW_LEFT = 'ArrowLeft';
