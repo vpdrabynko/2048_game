@@ -61,7 +61,7 @@ gameField.addEventListener('touchend', function (event) {
 
 
 function handleGesture() {
-  if (touchendX < touchstartX) {
+  if (touchendX < touchstartX && (Math.abs(touchstartX - touchendX) > Math.abs(touchstartY - touchendY))) {
     if (!canMoveLeft()) {
       setupInputOnce();
 
@@ -70,7 +70,7 @@ function handleGesture() {
     moveLeft();
   }
 
-  if (touchendX > touchstartX) {
+  if (touchendX > touchstartX && (Math.abs(touchstartX - touchendX) > Math.abs(touchstartY - touchendY))) {
     if (!canMoveRight()) {
       setupInputOnce();
 
@@ -79,7 +79,7 @@ function handleGesture() {
     moveRight();
   }
 
-  if (touchendY < touchstartY) {
+  if (touchendY < touchstartY && (Math.abs(touchstartY - touchendY) > Math.abs(touchstartX - touchendX))) {
     if (!canMoveUp()) {
       setupInputOnce();
 
@@ -88,7 +88,7 @@ function handleGesture() {
     moveUp();
   }
 
-  if (touchendY > touchstartY) {
+  if (touchendY > touchstartY && (Math.abs(touchstartY - touchendY) > Math.abs(touchstartX - touchendX))) {
     if (!canMoveDown()) {
       setupInputOnce();
 
@@ -98,7 +98,11 @@ function handleGesture() {
   }
 
   if (touchendY === touchstartY) {
-    setupInputOnce();
+    return;
+  }
+
+  if (touchendX === touchstartX) {
+    return;
   }
 
   const newTile = new Tile(gameField);
